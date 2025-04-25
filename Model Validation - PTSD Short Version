@@ -3,6 +3,7 @@ title: "PTSD minimal criteria"
 author:
 - "<h5 style=\"font-style:italic\"> Laura Weidmann"
 - "<h5 style=\"font-style:italic\"> Tobias R. Spiller"
+- "<h5 style=\"font-style:italic\"> Flavio A. Schüepp"
 date: "<h5 style=\"font-style:roman\"> `r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
