@@ -568,6 +568,25 @@ cv_splits <- crossv_kfold(simulated_ptsd_data_renamed, k = k)
 # Initialize result lists
 cv_results_without_clusters <- list()
 cv_results_with_clusters <- list()
+
+# Function to summarize PTSD diagnosis changes for each Split (Input: dataframes with columns showing whether the diagnosis is fulfilled under certain diagnostic criteria)
+summarize_cv_folds <- function(cv_list) {
+  summaries <- lapply(seq_along(cv_list), function(i) {
+    fold_data <- cv_list[[i]]
+    summary_stats <- summarize_ptsd_changes(fold_data)
+    readable <- create_readable_summary(summary_stats)
+    readable$Split <- paste0("Split ", i)
+    return(readable)
+  })
+  
+  # Merge all split-summary and show them in a datatabel
+  final_summary <- bind_rows(summaries)
+  
+  # Place Split Column at first place in datatabel
+  final_summary <- final_summary %>% select(Split, everything())
+  
+  return(final_summary)
+}
 ```
 
 #### 4.2.2 Cross Validation: Model without cluster representation
@@ -611,9 +630,11 @@ for (i in seq_len(k)) {
 ```
 Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, regardless of the cluster. Best means fewest newly_nondiagnosed
 ```{r Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, regardless of the cluster. Best means fewest newly_nondiagnosed, echo=FALSE, message=FALSE}
-# Merge all fold-results and show them in a datatabel
-cv_all_without <- bind_rows(cv_results_without_clusters, .id = "Fold")
-datatable(cv_all_without, options = list(scrollX = TRUE))
+# Apply summary function to cv results
+cv_summary_without_clusters <- summarize_cv_folds(cv_results_without_clusters)
+
+# Readable summary
+datatable(cv_summary_without_clusters, options = list(scrollX = TRUE))
 ```
 
 ### 4.2.3 Cross Validation: Model with cluster representation
@@ -694,9 +715,11 @@ for (i in seq_len(k)) {
 ```
 Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, one from each cluster. Best means fewest newly_nondiagnosed
 ```{r Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, one from each cluster. Best means fewest newly_nondiagnosed, echo=FALSE, message=FALSE}
-# Merge all fold-results and show them in a datatabel
-cv_all_with <- bind_rows(cv_results_with_clusters, .id = "Fold")
-datatable(cv_all_with, options = list(scrollX = TRUE))
+# Apply summary function to cv results
+cv_summary_with_clusters <- summarize_cv_folds(cv_results_with_clusters)
+
+# Readable summary
+datatable(cv_summary_with_clusters, options = list(scrollX = TRUE))
 ```
 
 ## 5. Session Info
