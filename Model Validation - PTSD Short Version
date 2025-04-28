@@ -570,7 +570,7 @@ cv_results_without_clusters <- list()
 cv_results_with_clusters <- list()
 
 # Function to summarize PTSD diagnosis changes for each Split (Input: dataframes with columns showing whether the diagnosis is fulfilled under certain diagnostic criteria)
-summarize_cv_folds <- function(cv_list) {
+summarize_cv_splits <- function(cv_list) {
   summaries <- lapply(seq_along(cv_list), function(i) {
     fold_data <- cv_list[[i]]
     summary_stats <- summarize_ptsd_changes(fold_data)
@@ -586,6 +586,52 @@ summarize_cv_folds <- function(cv_list) {
   final_summary <- final_summary %>% select(Split, everything())
   
   return(final_summary)
+}
+
+# Function to summarize average performance for repeated symptom combinations across splits
+summarize_combinations_across_splits <- function(cv_summary) {
+  # Group by symptom combination (Scenario), average and calculate sensitivity, specificity, PPV, NPV
+  combo_summary <- cv_summary %>%
+    mutate(
+      Total_Diagnosed_N = as.numeric(gsub(" \\(.*\\)", "", `Total.Diagnosed`)),
+      Total_Diagnosed_Pct = as.numeric(gsub(".*\\((.*)%\\)", "\\1", `Total.Diagnosed`)),
+      Total_Non_Diagnosed_N = as.numeric(gsub(" \\(.*\\)", "", `Total.Non.Diagnosed`)),
+      Total_Non_Diagnosed_Pct = as.numeric(gsub(".*\\((.*)%\\)", "\\1", `Total.Non.Diagnosed`))
+    ) %>%
+    group_by(Scenario) %>%
+    summarise(
+      Splits_Appeared = n(),
+      Total_Diagnosed = paste0(
+        round(mean(Total_Diagnosed_N), 2), 
+        " (", round(mean(Total_Diagnosed_Pct), 2), "%)"
+      ),
+      Total_Non_Diagnosed = paste0(
+        round(mean(Total_Non_Diagnosed_N), 2), 
+        " (", round(mean(Total_Non_Diagnosed_Pct), 2), "%)"
+      ),
+      True_Positive = round(mean(`True.Positive`), 2),
+      True_Negative = round(mean(`True.Negative`), 2),
+      Newly_Diagnosed = round(mean(`Newly.Diagnosed`), 2),
+      Newly_Non_Diagnosed = round(mean(`Newly.Non.Diagnosed`), 2),
+      True_Cases = round(mean(`True.Cases`), 2),
+      False_Cases = round(mean(`False.Cases`), 2),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Sensitivity = round(True_Positive / (True_Positive + Newly_Non_Diagnosed), 4),
+      Specificity = round(True_Negative / (True_Negative + Newly_Diagnosed), 4),
+      PPV = round(True_Positive / (True_Positive + Newly_Diagnosed), 4),
+      NPV = round(True_Negative / (True_Negative + Newly_Non_Diagnosed), 4)
+    )
+  
+  # Check if combinations occur multiple times
+  multiple_appearance <- combo_summary %>% filter(Folds_Appeared > 1)
+  
+ if (nrow(multiple_appearance) == 0) {
+    return(NULL)
+  } else {
+    return(multiple_appearance)
+  }
 }
 ```
 
@@ -628,16 +674,28 @@ for (i in seq_len(k)) {
   cv_results_without_clusters[[i]] <- comparison_df_without
 }
 ```
-Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, regardless of the cluster. Best means fewest newly_nondiagnosed
+Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, regardless of the cluster. Best means fewest newly_nondiagnosed.
 ```{r Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, regardless of the cluster. Best means fewest newly_nondiagnosed, echo=FALSE, message=FALSE}
 # Apply summary function to cv results
-cv_summary_without_clusters <- summarize_cv_folds(cv_results_without_clusters)
+cv_summary_without_clusters <- summarize_cv_splits(cv_results_without_clusters)
 
 # Readable summary
 datatable(cv_summary_without_clusters, options = list(scrollX = TRUE))
 ```
+Cross Validation Summary of average performance for repeated symptom combinations across splits (model without cluster representation).
+```{r Cross Validation Summary of average performance for repeated symptom combinations across splits (model without cluster representation)., echo=FALSE, message=FALSE}
+# Apply combo summary function to cv summary
+combo_summary_without_clusters <- summarize_combinations_across_splits(cv_summary_without_clusters)
 
-### 4.2.3 Cross Validation: Model with cluster representation
+# Readable summary
+if (!is.null(combo_summary_without_clusters)) {
+  datatable(combo_summary_without_clusters, options = list(scrollX = TRUE))
+} else {
+  message("None of the combinations appears in more than one split (model without cluster representation).")
+}
+```
+
+#### 4.2.3 Cross Validation: Model with cluster representation
 
 ```{r Cross Validation: Model with cluster representation, echo=FALSE, message=FALSE}
 # Loop for cross validation (Model with cluster)
@@ -713,13 +771,25 @@ for (i in seq_len(k)) {
   cv_results_with_clusters[[i]] <- comparison_df_with
 }
 ```
-Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, one from each cluster. Best means fewest newly_nondiagnosed
+Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, one from each cluster. Best means fewest newly_nondiagnosed.
 ```{r Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, one from each cluster. Best means fewest newly_nondiagnosed, echo=FALSE, message=FALSE}
 # Apply summary function to cv results
-cv_summary_with_clusters <- summarize_cv_folds(cv_results_with_clusters)
+cv_summary_with_clusters <- summarize_cv_splits(cv_results_with_clusters)
 
 # Readable summary
 datatable(cv_summary_with_clusters, options = list(scrollX = TRUE))
+```
+Cross Validation Summary of average performance for repeated symptom combinations across splits (model with cluster representation).
+```{r Cross Validation Summary of average performance for repeated symptom combinations across splits (model with cluster representation)., echo=FALSE, message=FALSE}
+# Apply combo summary function to cv summary
+combo_summary_with_clusters <- summarize_combinations_across_splits(cv_summary_with_clusters)
+
+# Readable summary
+if (!is.null(combo_summary_with_clusters)) {
+  datatable(combo_summary_with_clusters, options = list(scrollX = TRUE))
+} else {
+  message("None of the combinations appears in more than one split (model with cluster representation).")
+}
 ```
 
 ## 5. Session Info
