@@ -625,7 +625,7 @@ summarize_combinations_across_splits <- function(cv_summary) {
     )
   
   # Check if combinations occur multiple times
-  multiple_appearance <- combo_summary %>% filter(Folds_Appeared > 1)
+  multiple_appearance <- combo_summary %>% filter(Splits_Appeared > 1)
   
  if (nrow(multiple_appearance) == 0) {
     return(NULL)
