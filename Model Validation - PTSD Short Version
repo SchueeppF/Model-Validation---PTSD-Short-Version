@@ -3,6 +3,7 @@ title: "PTSD minimal criteria"
 author:
 - "<h5 style=\"font-style:italic\"> Laura Weidmann"
 - "<h5 style=\"font-style:italic\"> Tobias R. Spiller"
+- "<h5 style=\"font-style:italic\"> Flavio A. Schüepp"
 date: "<h5 style=\"font-style:roman\"> `r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
@@ -547,12 +548,14 @@ datatable(create_readable_summary(summarize_ptsd_changes(comparison_df_with_clus
 
 ### 4.2. Cross Validation (with additional package: modelr)
 
+#### 4.2.1 Helper Functions
+
 ```{r Load Library, message=FALSE, warning=TRUE, include=FALSE}
 # Data handling
 library(modelr)
 ```
 
-```{r Cross Validation, echo=FALSE, message=FALSE}
+```{r Helper Functions Cross Validation, echo=FALSE, message=FALSE}
 # Set the random number generator for reproducibility
 set.seed(123)
 
@@ -566,7 +569,76 @@ cv_splits <- crossv_kfold(simulated_ptsd_data_renamed, k = k)
 cv_results_without_clusters <- list()
 cv_results_with_clusters <- list()
 
-# Loop for cross validation
+# Function to summarize PTSD diagnosis changes for each Split (Input: dataframes with columns showing whether the diagnosis is fulfilled under certain diagnostic criteria)
+summarize_cv_splits <- function(cv_list) {
+  summaries <- lapply(seq_along(cv_list), function(i) {
+    fold_data <- cv_list[[i]]
+    summary_stats <- summarize_ptsd_changes(fold_data)
+    readable <- create_readable_summary(summary_stats)
+    readable$Split <- paste0("Split ", i)
+    return(readable)
+  })
+  
+  # Merge all split-summary and show them in a datatabel
+  final_summary <- bind_rows(summaries)
+  
+  # Place Split Column at first place in datatabel
+  final_summary <- final_summary %>% select(Split, everything())
+  
+  return(final_summary)
+}
+
+# Function to summarize average performance for repeated symptom combinations across splits
+summarize_combinations_across_splits <- function(cv_summary) {
+  # Group by symptom combination (Scenario), average and calculate sensitivity, specificity, PPV, NPV
+  combo_summary <- cv_summary %>%
+    mutate(
+      Total_Diagnosed_N = as.numeric(gsub(" \\(.*\\)", "", `Total.Diagnosed`)),
+      Total_Diagnosed_Pct = as.numeric(gsub(".*\\((.*)%\\)", "\\1", `Total.Diagnosed`)),
+      Total_Non_Diagnosed_N = as.numeric(gsub(" \\(.*\\)", "", `Total.Non.Diagnosed`)),
+      Total_Non_Diagnosed_Pct = as.numeric(gsub(".*\\((.*)%\\)", "\\1", `Total.Non.Diagnosed`))
+    ) %>%
+    group_by(Scenario) %>%
+    summarise(
+      Splits_Appeared = n(),
+      Total_Diagnosed = paste0(
+        round(mean(Total_Diagnosed_N), 2), 
+        " (", round(mean(Total_Diagnosed_Pct), 2), "%)"
+      ),
+      Total_Non_Diagnosed = paste0(
+        round(mean(Total_Non_Diagnosed_N), 2), 
+        " (", round(mean(Total_Non_Diagnosed_Pct), 2), "%)"
+      ),
+      True_Positive = round(mean(`True.Positive`), 2),
+      True_Negative = round(mean(`True.Negative`), 2),
+      Newly_Diagnosed = round(mean(`Newly.Diagnosed`), 2),
+      Newly_Non_Diagnosed = round(mean(`Newly.Non.Diagnosed`), 2),
+      True_Cases = round(mean(`True.Cases`), 2),
+      False_Cases = round(mean(`False.Cases`), 2),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Sensitivity = round(True_Positive / (True_Positive + Newly_Non_Diagnosed), 4),
+      Specificity = round(True_Negative / (True_Negative + Newly_Diagnosed), 4),
+      PPV = round(True_Positive / (True_Positive + Newly_Diagnosed), 4),
+      NPV = round(True_Negative / (True_Negative + Newly_Non_Diagnosed), 4)
+    )
+  
+  # Check if combinations occur multiple times
+  multiple_appearance <- combo_summary %>% filter(Splits_Appeared > 1)
+  
+ if (nrow(multiple_appearance) == 0) {
+    return(NULL)
+  } else {
+    return(multiple_appearance)
+  }
+}
+```
+
+#### 4.2.2 Cross Validation: Model without cluster representation
+
+```{r Cross Validation: Model without cluster representation, echo=FALSE, message=FALSE}
+# Loop for cross validation (Model without cluster)
 for (i in seq_len(k)) {
   
   # Extract training_data and test_data from Split
@@ -576,7 +648,6 @@ for (i in seq_len(k)) {
   # In test_data determine original PTSD diagnosis with non-binarized symptom scores
   test_data <- create_ptsd_diagnosis_nonbinarized(test_data)
   
-  ### Model without cluster
   # Find and extract the 3 best six-symptom combinations in training data (4/6, without cluster representation)
   train_results_without <- analyze_best_six_symptoms_four_required(train_data, score_by = "newly_nondiagnosed")
   top_combos_without <- train_results_without$best_symptoms
@@ -601,8 +672,42 @@ for (i in seq_len(k)) {
   
   # Save results
   cv_results_without_clusters[[i]] <- comparison_df_without
+}
+```
+Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, regardless of the cluster. Best means fewest newly_nondiagnosed.
+```{r Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, regardless of the cluster. Best means fewest newly_nondiagnosed, echo=FALSE, message=FALSE}
+# Apply summary function to cv results
+cv_summary_without_clusters <- summarize_cv_splits(cv_results_without_clusters)
+
+# Readable summary
+datatable(cv_summary_without_clusters, options = list(scrollX = TRUE))
+```
+Cross Validation Summary of average performance for repeated symptom combinations across splits (model without cluster representation).
+```{r Cross Validation Summary of average performance for repeated symptom combinations across splits (model without cluster representation)., echo=FALSE, message=FALSE}
+# Apply combo summary function to cv summary
+combo_summary_without_clusters <- summarize_combinations_across_splits(cv_summary_without_clusters)
+
+# Readable summary
+if (!is.null(combo_summary_without_clusters)) {
+  datatable(combo_summary_without_clusters, options = list(scrollX = TRUE))
+} else {
+  message("None of the combinations appears in more than one split (model without cluster representation).")
+}
+```
+
+#### 4.2.3 Cross Validation: Model with cluster representation
+
+```{r Cross Validation: Model with cluster representation, echo=FALSE, message=FALSE}
+# Loop for cross validation (Model with cluster)
+for (i in seq_len(k)) {
+    
+  # Extract training_data and test_data from Split
+  train_data <- as.data.frame(cv_splits$train[[i]])
+  test_data <- as.data.frame(cv_splits$test[[i]])
+    
+  # In test_data determine original PTSD diagnosis with non-binarized symptom scores
+  test_data <- create_ptsd_diagnosis_nonbinarized(test_data)  
   
-  ### Model with cluster
   # Find and extract the 3 best six-symptom combinations in training data (4/6, with cluster representation)
   train_results_with <- analyze_best_six_symptoms_four_required_clusters(train_data, score_by = "newly_nondiagnosed")
   top_combos_with <- train_results_with$best_symptoms
@@ -666,22 +771,25 @@ for (i in seq_len(k)) {
   cv_results_with_clusters[[i]] <- comparison_df_with
 }
 ```
-Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis (Datatabel 1: regardless of the cluster and Datatabel 2: one from each cluster). Best means fewest newly_nondiagnosed
+Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, one from each cluster. Best means fewest newly_nondiagnosed.
+```{r Cross Validation Summary for three best six-symptom-combinations, of which at least 4 must be present to fulfill the diagnosis, one from each cluster. Best means fewest newly_nondiagnosed, echo=FALSE, message=FALSE}
+# Apply summary function to cv results
+cv_summary_with_clusters <- summarize_cv_splits(cv_results_with_clusters)
 
-#### 4.2.1 Cross Validation results without Clusters
-
-```{r Cross Validation results without Clusters, echo=FALSE, message=FALSE}
-# Merge all fold-results and show them in a datatabel
-cv_all_without <- bind_rows(cv_results_without_clusters, .id = "Fold")
-datatable(cv_all_without, options = list(scrollX = TRUE))
+# Readable summary
+datatable(cv_summary_with_clusters, options = list(scrollX = TRUE))
 ```
+Cross Validation Summary of average performance for repeated symptom combinations across splits (model with cluster representation).
+```{r Cross Validation Summary of average performance for repeated symptom combinations across splits (model with cluster representation)., echo=FALSE, message=FALSE}
+# Apply combo summary function to cv summary
+combo_summary_with_clusters <- summarize_combinations_across_splits(cv_summary_with_clusters)
 
-#### 4.2.2 Cross Validation results with Clusters
-
-```{r Cross Validation results with Clusters, echo=FALSE, message=FALSE}
-# Merge all fold-results and show them in a datatabel
-cv_all_with <- bind_rows(cv_results_with_clusters, .id = "Fold")
-datatable(cv_all_with, options = list(scrollX = TRUE))
+# Readable summary
+if (!is.null(combo_summary_with_clusters)) {
+  datatable(combo_summary_with_clusters, options = list(scrollX = TRUE))
+} else {
+  message("None of the combinations appears in more than one split (model with cluster representation).")
+}
 ```
 
 ## 5. Session Info
