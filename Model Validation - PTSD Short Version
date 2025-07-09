@@ -39,9 +39,6 @@ library(psych)
 # Import data
 simulated_ptsd_data <- read_csv("Data/simulated_skewed_ptsd_data.csv")
 
-# Extract the first 100 rows for faster data analysis
-simulated_ptsd_data <- simulated_ptsd_data[1:100, ]
-
 # Renaming the columns in the input data (20 columns) to match the expected format
 simulated_ptsd_data_renamed <- simulated_ptsd_data %>%
   rename_with(~ paste0("symptom_", 1:20))
@@ -436,13 +433,14 @@ top_combinations_trained_without_clusters <- train_results_without_clusters$best
 create_ptsd_diagnosis_based_on_training_without_clusters <- function(data) {
   
   binarized_data <- binarize_data(data)
-  
+
+  # Helper function for diagnosis
   get_diagnosis <- function(binarized_data, symptoms) {             
     subset_data <- binarized_data[, paste0("symptom_", symptoms)]  
     return(rowSums(subset_data) >= 4)                               
   }
   
-  # Apply function get_diagnosis on the 3 lists of best six-symptom combinations
+  # Apply the get_diagnosis function using the 3 best six-symptom combinations based on the training data
   result <- lapply(top_combinations_trained_without_clusters, function(symptoms) get_diagnosis(binarized_data, symptoms))
   
   return(result)
@@ -500,7 +498,8 @@ create_ptsd_diagnosis_based_on_training_with_clusters <- function(data) {
   check_cluster_representation <- function(symptoms) {
     length(unique(cluster_lookup[symptoms])) == 4
   }
-  
+
+  # Helper function for diagnosis
   get_diagnosis <- function(binarized_data, symptoms) {
     subset_data <- binarized_data[, symptoms, drop = FALSE] 
     symptom_counts <- rowSums(subset_data) 
@@ -520,7 +519,7 @@ create_ptsd_diagnosis_based_on_training_with_clusters <- function(data) {
     return(result) 
   }
   
-  # Apply function get_diagnosis on the 3 lists of best six-symptom combinations
+  # Apply the get_diagnosis function using the 3 best six-symptom combinations based on the training data
   result <- lapply(top_combinations_trained_with_clusters, function(symptoms) get_diagnosis(binarized_data, symptoms))
   
   return(result)
@@ -579,7 +578,7 @@ summarize_cv_splits <- function(cv_list) {
     return(readable)
   })
   
-  # Merge all split-summary and show them in a datatabel
+  # Merge all split-summaries and show them in a datatabel
   final_summary <- bind_rows(summaries)
   
   # Place Split Column at first place in datatabel
@@ -590,7 +589,8 @@ summarize_cv_splits <- function(cv_list) {
 
 # Function to summarize average performance for repeated symptom combinations across splits
 summarize_combinations_across_splits <- function(cv_summary) {
-  # Group by symptom combination (Scenario), average and calculate sensitivity, specificity, PPV, NPV
+  # Group by symptom combination (Scenario)
+  # Calculate average performance, sensitivity, specificity, PPV and NPV
   combo_summary <- cv_summary %>%
     mutate(
       Total_Diagnosed_N = as.numeric(gsub(" \\(.*\\)", "", `Total.Diagnosed`)),
