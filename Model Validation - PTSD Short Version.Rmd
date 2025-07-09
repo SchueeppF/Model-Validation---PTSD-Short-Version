@@ -682,8 +682,8 @@ cv_summary_without_clusters <- summarize_cv_splits(cv_results_without_clusters)
 # Readable summary
 datatable(cv_summary_without_clusters, options = list(scrollX = TRUE))
 ```
-Cross Validation Summary of average performance for repeated symptom combinations across splits (model without cluster representation).
-```{r Cross Validation Summary of average performance for repeated symptom combinations across splits (model without cluster representation)., echo=FALSE, message=FALSE}
+Cross Validation Summary of average performance for repeated symptom combinations across multiple splits (model without cluster representation).
+```{r Cross Validation Summary of average performance for repeated symptom combinations across multiple splits (model without cluster representation)., echo=FALSE, message=FALSE}
 # Apply combo summary function to cv summary
 combo_summary_without_clusters <- summarize_combinations_across_splits(cv_summary_without_clusters)
 
@@ -779,8 +779,8 @@ cv_summary_with_clusters <- summarize_cv_splits(cv_results_with_clusters)
 # Readable summary
 datatable(cv_summary_with_clusters, options = list(scrollX = TRUE))
 ```
-Cross Validation Summary of average performance for repeated symptom combinations across splits (model with cluster representation).
-```{r Cross Validation Summary of average performance for repeated symptom combinations across splits (model with cluster representation)., echo=FALSE, message=FALSE}
+Cross Validation Summary of average performance for repeated symptom combinations across multiple splits (model with cluster representation).
+```{r Cross Validation Summary of average performance for repeated symptom combinations across multiple splits (model with cluster representation)., echo=FALSE, message=FALSE}
 # Apply combo summary function to cv summary
 combo_summary_with_clusters <- summarize_combinations_across_splits(cv_summary_with_clusters)
 
