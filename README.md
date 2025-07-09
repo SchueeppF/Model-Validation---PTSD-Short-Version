@@ -16,8 +16,8 @@ PTSD diagnostic criteria using PCL-5 (PTSD Checklist for DSM-5) data. It
 provides tools to identify optimal subsets of six PCL-5 items that maintain
 diagnostic accuracy while reducing assessment burden.
 
-This extended version includes additional validation methods to assess the
-stability of the diagnostic models across multiple data subsets, providing
+This extended R-Markdown file includes additional validation methods to assess
+the stability of the diagnostic models across multiple data subsets, providing
 a more reliable estimate of their predictive accuracy.
 
 ## **Key Features**
@@ -40,12 +40,6 @@ using the usual way:
 ``` r
 install.packages("devtools")
 devtools::install_github("WeidmannL/PTSDdiag")
-```
-
-An additional installation is required to access this new version:
-
-``` r
-devtools::install_github("SchueeppF/Model-Validation---PTSD-Short-Version")
 ```
 
 ## Getting Started
