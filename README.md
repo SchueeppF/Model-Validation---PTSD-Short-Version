@@ -6,7 +6,7 @@ This project is part of a Master thesis in Human Medicine at the University of Z
 
 ## R Markdown file "Model Validation - PTSD Short Version.Rmd"
 
-Parts 1-3 of the code were adopted from PTSDdiag (https://github.com/WeidmannL/PTSDdiag).
+Parts 1-3 of the code were adopted from [PTSDdiag](https://github.com/WeidmannL/PTSDdiag).
 They include the following:
 - Data preparation and standardization for PCL-5 (PTSD Checklist for DSM-5) scores
 - Implementation of DSM-5 diagnostic criteria
@@ -23,9 +23,10 @@ It includes additional validation methods to assess the stability of the diagnos
 ### Required Input Data
 This R Markdown file operates on a dataset in `.csv` format containing responses to the PCL-5 (PTSD Checklist for DSM-5). The dataset should have the following structure:
 - Rows: Individual participants  
-- Columns: PTSD-related symptoms, rated on a Likert scale (e.g., 0–4)
+- Columns: PTSD-related symptoms, rated on a Likert scale (0-4)
 
-A sample dataset can be downloaded at: https://github.com/WeidmannL/PTSDdiag/tree/main/data.
+A sample dataset can be downloaded at [PTSDdiag/data](https://github.com/WeidmannL/PTSDdiag/tree/main/data)
+.
 
 ## How to Run
 
